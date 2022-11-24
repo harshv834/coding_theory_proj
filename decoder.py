@@ -6,11 +6,11 @@ def bit_flip_dec(H, y, max_iter=int(1e3)):
     curr_y = y
     for _ in tqdm(range(max_iter)):
         syndrome = H @ curr_y
-        unsatisfied_parity_idx = np.arange(H.shape[1])[syndrome != 0]
+        unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
         if syndrome == np.zeros(y.shape[0]):
             return curr_y
         else:
-            satisfied_parity_idx = np.arange(H.shape[1])[syndrome == 0]
+            satisfied_parity_idx = np.arange(H.shape[0])[syndrome == 0]
             num_unsatisfied = H[unsatisfied_parity_idx].sum(axis=0)
             num_satisfied = H[satisfied_parity_idx].sum(axis=0)
             bit_flip_idx = np.argmax(num_unsatisfied - num_satisfied)
