@@ -3,7 +3,11 @@ from tqdm import tqdm
 
 
 def bit_flip_dec(H, y, max_iter=int(1e3)):
-    curr_y = y
+
+    curr_y = y.astype(int)
+    y_neg = curr_y == -1
+    if y_neg.sum() > 0:
+        curr_y[y_neg] = 0
     for _ in tqdm(range(max_iter)):
         syndrome = H @ curr_y
         unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
@@ -16,6 +20,13 @@ def bit_flip_dec(H, y, max_iter=int(1e3)):
             bit_flip_idx = np.argmax(num_unsatisfied - num_satisfied)
             curr_y[bit_flip_idx] = (curr_y[bit_flip_idx] + 1) % 2
     return curr_y
+
+
+def add_error(corr_y, num_errs):
+    e = np.zeros(corr_y.shape)
+    err_idx = np.random.choice(corr_y.shape[0], num_errs)
+    e[err_idx] = 1
+    return (corr_y + e) % 2
 
 
 # def message_v_c(i, prior, check_ll, H):
