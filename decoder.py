@@ -1,32 +1,112 @@
 import numpy as np
 from tqdm import tqdm
+from abc import ABC
 
 
-def bit_flip_dec(H, y, max_iter=int(1e3)):
+METRIC_CHOICES = ["sat", "unsat", "unsat_sat"]
+SELECTOR_CHOICES = ["greedy", "weighted"]
 
-    curr_y = y.astype(int)
-    y_neg = curr_y == -1
-    if y_neg.sum() > 0:
-        curr_y[y_neg] = 0
-    for _ in tqdm(range(max_iter)):
-        syndrome = H @ curr_y
-        unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
-        if syndrome == np.zeros(y.shape[0]):
-            return curr_y
-        else:
-            satisfied_parity_idx = np.arange(H.shape[0])[syndrome == 0]
-            num_unsatisfied = H[unsatisfied_parity_idx].sum(axis=0)
+
+class BaseAlgo(ABC):
+    def __init__(self, algo_name, algo_params={}):
+        super(BaseAlgo, self).__init__()
+        self.algo_name = algo_name
+        self.algo_params = algo_params
+
+    def decode(self, H, y_err):
+        raise NotImplementedError
+
+
+class BitFlipAlgo(BaseAlgo):
+    def __init__(self, algo_name, algo_params={}):
+        super(BitFlipAlgo, self).__init__(algo_name=algo_name, algo_params=algo_params)
+
+    def bit_flip(self, H, y_err):
+        metric = self.algo_params["metric"](H, y_err)
+        bit_flip_idx = self.algo_params["selector"](metric, y_err)
+        new_y = y_err
+        new_y[bit_flip_idx] = (new_y[bit_flip_idx] + 1) % 2
+        return new_y
+
+    def decode(self, H, y_err):
+        y_list = [y_err]
+        for i in range(self.algo_params["max_iter"]):
+            syndrome = (H @ y_list[i]) % 2
+            if (syndrome == 0).all():
+                return y_list
+            else:
+                y_list.append(self.bit_flip(H, y_list[i]))
+        return y_list
+
+
+class Metric:
+    def __init__(self, name):
+        self.name = name
+        assert self.name in [
+            "sat",
+            "unsat",
+            "unsat_sat",
+        ], "metric {} not implemented".format(self.name)
+
+    def __call__(self, H, y_err):
+        syndrome = (H @ y_err).astype(int) % 2
+        if self.name in ["sat", "unsat_sat"]:
+            satisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
             num_satisfied = H[satisfied_parity_idx].sum(axis=0)
-            bit_flip_idx = np.argmax(num_unsatisfied - num_satisfied)
-            curr_y[bit_flip_idx] = (curr_y[bit_flip_idx] + 1) % 2
-    return curr_y
+        if self.name in ["unsat", "unsat_sat"]:
+            unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
+            num_unsatisfied = H[unsatisfied_parity_idx].sum(axis=0)
+        if self.name == "sat":
+            return -num_satisfied
+        elif self.name == "unsat":
+            return num_unsatisfied
+        else:
+            return num_unsatisfied - num_satisfied
 
 
-def add_error(corr_y, num_errs):
-    e = np.zeros(corr_y.shape)
-    err_idx = np.random.choice(corr_y.shape[0], num_errs)
-    e[err_idx] = 1
-    return (corr_y + e) % 2
+class BitSelector:
+    def __init__(self, name, params={"lambda": 1}):
+        self.name = name
+        self.params = params
+        assert self.name in [
+            "greedy",
+            "weighted",
+        ], "Bit selection method {} not implemented".format(self.name)
+
+    def __call__(self, metric, y_err):
+        if self.name == "greedy":
+            return np.argmax(metric)
+        else:
+            probs = np.exp(self.params["lambda"] * metric)
+            probs = probs / probs.sum()
+            return np.random.choice(np.arange(metric.shape[0]), p=probs)
+
+
+class ExploreSelector(BitSelector):
+    def __init__(self, name, params={"lambda": 1, "p": 0.2}):
+        super(ExploreSelector, self).__init__(name=name, params=params)
+
+    def __call__(self, metric, y_err):
+        if np.random.rand() <= self.params["p"]:
+            return np.random.choice(np.arange(metric.shape[0]))
+        else:
+            return super().__call__(metric, y_err)
+
+
+# class ExploreComp(BitFlipAlgo):
+#     def __init__(self, algo_name, algo_params = {}):
+#         super(ExploreComp, self).__init__(algo_name=algo_name, algo_params=algo_params)
+
+#     def bit_flip(self, y_err):
+#         if np.random.rand() < self.algo_params["p"]:
+#             bit_flip_idx = np.random.choice(y_err.shape[0])
+#             new_y = y_err
+#             new_y[bit_flip_idx] = (new_y[bit_flip_idx]+1) % 2
+#             return new_y
+#         else:
+#             return super().bit_flip(y_err)
+
+# metric =
 
 
 # def message_v_c(i, prior, check_ll, H):
