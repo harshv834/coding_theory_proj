@@ -14,21 +14,21 @@ from pyldpc import make_ldpc, encode
 import pickle
 
 
-def benchmark_algo(algorithm, codes_per_case, trials_per_code):
+def benchmark_algo(algorithm, codes_per_case=1, trials_per_code=1):
     stats = {}
-    n = [10, 100, 1000]
-    # rate = [0.01, 0.1, 0.5]
+    n = [20, 100, 1000]
+    rate = [0.1, 0.25, 0.4]
     frac_of_errs = [0.1, 0.25, 0.4]
-    cases = list(itertools.product(n, frac_of_errs))
-    d_v = 4
-    d_c = 5
+    cases = list(itertools.product(n, rate, frac_of_errs))
     ### This d_c and d_v can be used to set the code rate. I think d_c/n should be the rate.
     snr = 200
 
     for case in tqdm(cases):
-        n, frac_of_errs = case
+        n, rate, frac_of_errs = case
 
         for code in range(codes_per_case):
+            d_c = int(n/5)
+            d_v = int((1-rate)*d_c)
             H, G = make_ldpc(n, d_v, d_c, systematic=True, sparse=True)
             k = G.shape[1]
             v = np.random.randint(2, size=k)
@@ -53,6 +53,9 @@ def benchmark_algo(algorithm, codes_per_case, trials_per_code):
                 l1_dist / trials_per_code,
                 num_abs_correct / trials_per_code,
                 num_valid_codeword / trials_per_code,
+                n,
+                rate,
+                frac_of_errs
             )
 
     return stats

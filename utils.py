@@ -2,10 +2,13 @@ import numpy as np
 
 
 class Stats:
-    def __init__(self, l1_dist, absolute_correct, is_codeword):
+    def __init__(self, l1_dist, absolute_correct, is_codeword, n, rate, frac_of_errs):
         self.l1_dist = l1_dist
         self.absolute_correct = absolute_correct
         self.is_codeword = is_codeword
+        self.n = n
+        self.rate = rate
+        self.frac_of_errs = frac_of_errs
 
 
 def add_error(corr_y, num_errs):
