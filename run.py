@@ -49,14 +49,14 @@ def benchmark_algo(algorithm, codes_per_case=1, trials_per_code=1):
                 num_abs_correct += 1 if (decode_y == y).all() else 0
                 num_valid_codeword += 1 if (H @ decode_y).all() == 0 else 0
 
-            stats[code] = Stats(
-                l1_dist / trials_per_code,
-                num_abs_correct / trials_per_code,
-                num_valid_codeword / trials_per_code,
-                n,
-                rate,
-                frac_of_errs
-            )
+        stats[case] = Stats(
+            l1_dist / (trials_per_code * codes_per_case),
+            num_abs_correct / (trials_per_code * codes_per_case),
+            num_valid_codeword / (trials_per_code * codes_per_case),
+            n,
+            rate,
+            frac_of_errs
+        )
 
     return stats
 
@@ -80,7 +80,7 @@ def main():
             algo = BitFlipAlgo(algo_name=algo_name, algo_params=algo_params)
             stats = benchmark_algo(algo, num_codes, num_trials_per_code)
             stats_dict[algo_name] = stats
-    with open("results.pickle", "rb") as f:
+    with open("results.pickle", "wb") as f:
         pickle.dump(stats_dict, f)
 
 
