@@ -1,7 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 from abc import ABC
-
+from utils import GF
 
 METRIC_CHOICES = ["sat", "unsat", "unsat_sat"]
 SELECTOR_CHOICES = ["greedy", "weighted"]
@@ -21,22 +21,23 @@ class BitFlipAlgo(BaseAlgo):
     def __init__(self, algo_name, algo_params={}):
         super(BitFlipAlgo, self).__init__(algo_name=algo_name, algo_params=algo_params)
 
-    def bit_flip(self, H, y_err):
-        metric = self.algo_params["metric"](H, y_err)
+    def bit_flip(self, H, y_err, syndrome):
+        metric = self.algo_params["metric"](H, y_err, syndrome)
         bit_flip_idx = self.algo_params["selector"](metric, y_err)
         new_y = y_err
-        new_y[bit_flip_idx] = (new_y[bit_flip_idx] + 1) % 2
-        return new_y
+        new_y[bit_flip_idx] += GF(1)
+        return new_y, bit_flip_idx
 
     def decode(self, H, y_err):
         y_list = [y_err]
-        for i in tqdm(range(self.algo_params["max_iter"])):
-            syndrome = ()
-            syndrome = (H @ y_list[i]) % 2
+        syndrome = H @ y_list[0]
+        for i in range(self.algo_params["max_iter"]):
             if (syndrome == 0).all():
                 return y_list
             else:
-                y_list.append(self.bit_flip(H, y_list[i]))
+                y_new, bit_flip_idx = self.bit_flip(H, y_list[i], syndrome)
+                y_list.append(y_new)
+                syndrome += H[:, bit_flip_idx]
         return y_list
 
 
@@ -49,8 +50,7 @@ class Metric:
             "unsat_sat",
         ], "metric {} not implemented".format(self.name)
 
-    def __call__(self, H, y_err):
-        syndrome = (H @ y_err).astype(int) % 2
+    def __call__(self, H, y_err, syndrome):
         if self.name in ["sat", "unsat_sat"]:
             satisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
             num_satisfied = H[satisfied_parity_idx].sum(axis=0)

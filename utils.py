@@ -1,5 +1,6 @@
 import numpy as np
-
+import galois
+GF = galois.GF(2)
 
 class Stats:
     def __init__(self, l1_dist, absolute_correct, is_codeword, n, rate, frac_of_errs):
@@ -12,7 +13,7 @@ class Stats:
 
 
 def add_error(corr_y, num_errs):
-    e = np.zeros(corr_y.shape)
+    e = GF.Zeros(corr_y.shape)
     err_idx = np.random.choice(corr_y.shape[0], num_errs)
     e[err_idx] = 1
-    return (corr_y + e) % 2
+    return (corr_y + e) 
