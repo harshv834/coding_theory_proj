@@ -39,9 +39,9 @@ def benchmark_algo(algorithm, codes_per_case=1, trials_per_code=1):
             num_valid_codeword = 0
 
             for trial in range(trials_per_code):
-                y = add_error(y, int(frac_of_errs * n))
+                y_err = add_error(y, int(frac_of_errs * n))
 
-                y_list = algorithm.decode(H, y)
+                y_list = algorithm.decode(H, y_err)
                 decode_y = y_list[-1]
                 y = y.astype(int)
                 decode_y = decode_y.astype(int)
