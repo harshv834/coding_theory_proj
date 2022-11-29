@@ -13,6 +13,7 @@ import numpy as np
 from pyldpc import make_ldpc, encode
 import pickle
 from multiprocessing.pool import ThreadPool as Pool
+import torch
 
 # _func = None
 
@@ -115,8 +116,7 @@ def main():
             algo = BitFlipAlgo(algo_name=algo_name, algo_params=algo_params)
             stats = benchmark_algo(p, algo, num_codes, num_trials_per_code)
             stats_dict[algo_name] = stats
-    with open("results.pickle", "wb") as f:
-        pickle.dump(stats_dict, f)
+            torch.save(stats_dict, "results.pt")
 
 
 if __name__ == "__main__":
