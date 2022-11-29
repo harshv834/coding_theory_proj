@@ -30,7 +30,8 @@ class BitFlipAlgo(BaseAlgo):
 
     def decode(self, H, y_err):
         y_list = [y_err]
-        for i in range(self.algo_params["max_iter"]):
+        for i in tqdm(range(self.algo_params["max_iter"])):
+            syndrome = ()
             syndrome = (H @ y_list[i]) % 2
             if (syndrome == 0).all():
                 return y_list
