@@ -95,7 +95,7 @@ def benchmark_algo(p, algorithm, codes_per_case=1, trials_per_code=1):
 
 
 def main():
-    p = Pool(10)
+    p = Pool(20)
     stats_dict = {}
     for metric_name, selector_name in itertools.product(
         METRIC_CHOICES, SELECTOR_CHOICES
