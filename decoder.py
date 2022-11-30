@@ -33,12 +33,56 @@ class BitFlipAlgo(BaseAlgo):
         syndrome = H @ y_list[0]
         for i in range(self.algo_params["max_iter"]):
             if (syndrome == 0).all():
-                return y_list
+                return y_list[-1]
             else:
                 y_new, bit_flip_idx = self.bit_flip(H, y_list[i], syndrome)
                 y_list.append(y_new)
                 syndrome += H[:, bit_flip_idx]
-        return y_list
+        return y_list[-1]
+
+class BitFlipTopL(BitFlipAlgo):
+    def __init__(self, algo_name, algo_params = {}):
+        super(BitFlipTopL, self).__init__(algo_name, algo_params)
+        self.min_dist = 10
+    
+    def decode(self, H, y_err):
+        topL_list = [y_err]
+        for i in tqdm(range(self.algo_params["max_iter"])):
+            syndromes = [H @ y for y in topL_list]
+            flipped = [self.bit_flip(H, topL_list[i], syndromes[i])[0] for i in range(len(topL_list))]
+            # flipped = [code for code in flipped if np.abs(np.array(code - y_err)).sum() < (self.algo_params["min_dist"]/2)]
+            all_candidates = topL_list + flipped
+            scores = np.array([self.code_metric(H, y, y_err) for y in all_candidates])
+            if len(all_candidates) > self.algo_params["L"]:
+                sort_idx = np.argsort(scores)
+                scores = scores[sort_idx[:self.algo_params["L"]]]
+                topL_list_temp = [all_candidates[j] for j in sort_idx.astype(int)[:self.algo_params["L"]]]
+                topL_temp_set = set([tuple(np.array(code)) for code in topL_list_temp])
+                topL_set = set([tuple(np.array(code)) for code in topL_list])
+                if len(topL_temp_set.intersection(topL_set)) >= self.algo_params["coeff"]*self.algo_params["L"]:
+                    break
+                topL_list = topL_list_temp    
+            else:
+                topL_list = all_candidates
+
+        best_idx = np.argmin(scores)
+        best_code = topL_list[best_idx]
+        return best_code
+
+    def code_metric(self, H, y_curr, y_orig):
+        syndrome = H @ y_curr
+        unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
+        num_unsatisfied = np.array(H)[unsatisfied_parity_idx].sum()
+        dist_from_orig = np.abs(np.array(y_curr - y_orig)).sum()
+        wt = 0.1
+        return num_unsatisfied + wt*dist_from_orig
+
+        
+    
+        
+
+
+
 
 
 class Metric:
@@ -53,10 +97,10 @@ class Metric:
     def __call__(self, H, y_err, syndrome):
         if self.name in ["sat", "unsat_sat"]:
             satisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
-            num_satisfied = H[satisfied_parity_idx].sum(axis=0)
+            num_satisfied = np.array(H)[satisfied_parity_idx].sum(axis=0)
         if self.name in ["unsat", "unsat_sat"]:
             unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
-            num_unsatisfied = H[unsatisfied_parity_idx].sum(axis=0)
+            num_unsatisfied = np.array(H)[unsatisfied_parity_idx].sum(axis=0)
         if self.name == "sat":
             return -num_satisfied
         elif self.name == "unsat":

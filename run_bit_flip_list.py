@@ -1,12 +1,9 @@
 from decoder import (
     BitSelector,
     Metric,
-    BitFlipAlgo,
-    ExploreSelector,
-    METRIC_CHOICES,
-    SELECTOR_CHOICES,
+    BitFlipTopL
 )
-from utils import Stats, add_error, GF, get_min_dist
+from utils import Stats, add_error, GF
 from tqdm import tqdm
 import itertools
 import numpy as np
@@ -78,6 +75,8 @@ def benchmark_algo(p, algorithm, codes_per_case=1, trials_per_code=1):
         d_v = int((1 - rate) * d_c)
         H, G = make_ldpc(n, d_v, d_c, systematic=True, sparse=True)
         k = G.shape[1]
+        # min_dist = get_min_dist(G)
+        # algo_params = 
 
         test_code_ = lambda code: test_code(
             code, n, frac_of_errs, algorithm, trials_per_code, snr, G, H, k
@@ -100,30 +99,21 @@ def benchmark_algo(p, algorithm, codes_per_case=1, trials_per_code=1):
 
 
 def main():
-    p = Pool(20)
-    stats_dict = {}
-    for metric_name, selector_name in itertools.product(
-        METRIC_CHOICES, SELECTOR_CHOICES
-    ):
-        for i in range(2):
-            metric = Metric(metric_name)
-            num_trials_per_code = 2
-            num_codes = 20
-            algo_name = metric_name + "_" + selector_name
-            if i == 1:
-                algo_name += "_" + "explore"
-                selector = ExploreSelector(selector_name)
-            else:
-                selector = BitSelector(selector_name)
-            if selector_name == "greedy":
-                num_trials_per_code = 1
-            algo_params = {"max_iter": int(1e5), "metric": metric, "selector": selector}
-            algo = BitFlipAlgo(algo_name=algo_name, algo_params=algo_params)
-            stats = benchmark_algo(p, algo, num_codes, num_trials_per_code)
-            stats_dict[algo_name] = stats
+    p = Pool(1)
+    metric_name = "unsat_sat"
+    selector_name = "greedy"
+    metric = Metric(metric_name)
+    num_trials_per_code = 1
+    num_codes = 2
+    L = 10
+    algo_name = metric_name + "_" + selector_name + "_" + str(L)
+    selector = BitSelector(selector_name)
+    algo_params = {"max_iter": int(1e3), "metric": metric, "selector": selector, "L" : L, "coeff":1}
+    algo = BitFlipTopL(algo_name=algo_name, algo_params=algo_params)
+    stats = benchmark_algo(p, algo, num_codes, num_trials_per_code)
 
-    with open("results_myro.pickle", "wb") as f:
-        pickle.dump(stats_dict, f)
+    with open(f"results_top_{L}.pickle", "wb") as f:
+        pickle.dump(stats, f)
 
 
 if __name__ == "__main__":
