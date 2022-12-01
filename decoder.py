@@ -43,16 +43,37 @@ class BitFlipAlgo(BaseAlgo):
 class BitFlipTopL(BitFlipAlgo):
     def __init__(self, algo_name, algo_params = {}):
         super(BitFlipTopL, self).__init__(algo_name, algo_params)
-        self.min_dist = 10
     
-    def decode(self, H, y_err):
+    def decode(self, H, y_err, half_min_dist):
         topL_list = [y_err]
-        for i in range(self.algo_params["max_iter"]):
+        flag=False
+        for _ in range(self.algo_params["max_iter"]):
             syndromes = [H @ y for y in topL_list]
-            flipped = [self.bit_flip(H, topL_list[i], syndromes[i])[0] for i in range(len(topL_list))]
-            # flipped = [code for code in flipped if np.abs(np.array(code - y_err)).sum() < (self.algo_params["min_dist"]/2)]
-            all_candidates = topL_list + flipped
+            all_candidates = []
+            for j in range(len(topL_list)):
+                if (syndromes[j] == 0).all():
+                    return topL_list[j]
+            
+                metric = self.algo_params["metric"](H, topL_list[j], syndromes[j])
+                sort_idx = np.argsort(metric)
+                bits_to_flip = sort_idx[:self.algo_params["L"]]
+                candidates = []
+                for bit_idx in bits_to_flip:
+                    new_y = topL_list[j].copy()
+                    new_y[bit_idx] += GF(1)
+                    candidates.append(new_y)
+                all_candidates += candidates
+            candidates_to_keep = [code for code in all_candidates if np.array(np.abs(code - y_err)).sum() <= half_min_dist]
+            if len(candidates_to_keep) == 0:
+                flag = True
+            else:
+                all_candidates = candidates_to_keep
+            # all_candidates = [code for code in all_candidates if np.array(np.abs(code - y_err)).sum() < half_min_dist]
             scores = np.array([self.code_metric(H, y, y_err) for y in all_candidates])
+            if flag:
+                best_idx = np.argmin(scores)
+                best_code = topL_list[best_idx]
+                return best_code
             if len(all_candidates) > self.algo_params["L"]:
                 sort_idx = np.argsort(scores)
                 scores = scores[sort_idx[:self.algo_params["L"]]]
@@ -61,7 +82,7 @@ class BitFlipTopL(BitFlipAlgo):
                 topL_set = set([tuple(np.array(code)) for code in topL_list])
                 if len(topL_temp_set.intersection(topL_set)) >= self.algo_params["coeff"]*self.algo_params["L"]:
                     break
-                topL_list = topL_list_temp    
+                topL_list = topL_list_temp
             else:
                 topL_list = all_candidates
 
@@ -71,10 +92,9 @@ class BitFlipTopL(BitFlipAlgo):
 
     def code_metric(self, H, y_curr, y_orig):
         syndrome = H @ y_curr
-        import ipdb;ipdb.set_trace()
         num_unsatisfied_constr = (np.array(syndrome) != 0).sum()
         dist_from_orig = np.abs(np.array(y_curr - y_orig)).sum()
-        wt = 2
+        wt = 0.2
         return num_unsatisfied_constr + wt*dist_from_orig
 
         
@@ -96,11 +116,12 @@ class Metric:
 
     def __call__(self, H, y_err, syndrome):
         if self.name in ["sat", "unsat_sat"]:
-            satisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
+            satisfied_parity_idx = np.arange(H.shape[0])[syndrome == 0]
             num_satisfied = np.array(H)[satisfied_parity_idx].sum(axis=0)
         if self.name in ["unsat", "unsat_sat"]:
             unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
             num_unsatisfied = np.array(H)[unsatisfied_parity_idx].sum(axis=0)
+
         if self.name == "sat":
             return -num_satisfied
         elif self.name == "unsat":

@@ -21,6 +21,9 @@ def add_error(corr_y, num_errs):
 def h_inv(h): 
     return (np.log2(1 + np.sqrt(1-np.power(h, 4/3))) + (h-1))/(2*np.arctanh(np.sqrt(1-np.power(h,4/3))))
 
-def h_inv_alt(h): 
+def h_inv_lb(h): 
     return h/(2*np.log2(6/h))
 
+
+def h_inv_ub(h):
+    return h/np.log2(1/h)
