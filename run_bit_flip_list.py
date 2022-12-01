@@ -1,7 +1,8 @@
 from decoder import (
     BitSelector,
     Metric,
-    BitFlipTopL
+    BitFlipTopL,
+    BitFlipAlgo
 )
 from utils import Stats, add_error, GF
 from tqdm import tqdm
@@ -44,11 +45,13 @@ def test_code(code, n, frac_of_errs, algorithm, trials_per_code, snr, G, H, k):
     l1_dist = 0
     num_abs_correct = 0
     num_valid_codeword = 0
+    print( y,"y")
 
     for trial in range(trials_per_code):
         y_err = add_error(y, max(1, int(frac_of_errs * n)))
-
+        print(y_err,"y_err")
         decode_y = algorithm.decode(H, y_err)
+        print(decode_y, "decoded y")
         # y = y.astype(int)
         # decode_y = decode_y.astype(int)
         l1_dist += np.absolute(np.array(decode_y - y)).sum()
@@ -57,21 +60,27 @@ def test_code(code, n, frac_of_errs, algorithm, trials_per_code, snr, G, H, k):
         #print(l1_dist, " l1_dist ")
         #print(num_abs_correct, " num_abs_correct ")
         #print(num_valid_codeword, " num_valid_codeword ")
+    print("l1 dist", l1_dist)
+    print("num_valid_codeword", num_valid_codeword)
+    print("num_abs_correct", num_abs_correct)
+    
     return np.array([l1_dist, num_abs_correct, num_valid_codeword])
 
 
 def benchmark_algo(p, algorithm, codes_per_case=1, trials_per_code=1):
     stats = {}
-    n = [20, 50, 100]
-    #n = [50]
-    rate = [0.1, 0.25, 0.4]
-    frac_of_errs = [0.01, 0.05, 0.1]
+    # n = [20, 50, 100]
+    n = [100]
+    rate = [0.1]
+    # rate = [0.1, 0.25, 0.4]
+    frac_of_errs = [0.01]
+    # frac_of_errs = [0.01, 0.05, 0.1]
     cases = list(itertools.product(n, rate, frac_of_errs))
     ### This d_c and d_v can be used to set the code rate. I think d_c/n should be the rate.
     snr = 200
     for case in tqdm(cases):
         n, rate, frac_of_errs = case
-        d_c = int(n / 5)
+        d_c = 5
         d_v = int((1 - rate) * d_c)
         H, G = make_ldpc(n, d_v, d_c, systematic=True, sparse=True)
         k = G.shape[1]
@@ -104,16 +113,20 @@ def main():
     selector_name = "greedy"
     metric = Metric(metric_name)
     num_trials_per_code = 1
-    num_codes = 2
+    num_codes = 1
     L = 10
     algo_name = metric_name + "_" + selector_name + "_" + str(L)
     selector = BitSelector(selector_name)
     algo_params = {"max_iter": int(1e3), "metric": metric, "selector": selector, "L" : L, "coeff":1}
-    algo = BitFlipTopL(algo_name=algo_name, algo_params=algo_params)
-    stats = benchmark_algo(p, algo, num_codes, num_trials_per_code)
+    # algo_topL = BitFlipTopL(algo_name=algo_name, algo_params=algo_params)
+    # stats_topL = benchmark_algo(p, algo_topL, num_codes, num_trials_per_code)
+    algo_greedy = BitFlipAlgo(algo_name=algo_name, algo_params=algo_params)
+    stats_greedy = benchmark_algo(p, algo_greedy, num_codes, num_trials_per_code)
+    print("Stats for greedy ", stats_greedy)
+    # print("Stats for Top10", stats_topL)
 
-    with open(f"results_top_{L}.pickle", "wb") as f:
-        pickle.dump(stats, f)
+    # with open(f"results_top_10.pickle", "wb") as f:
+    #     pickle.dump({"greedy": stats_greedy, "top10": stats_topL}, f)
 
 
 if __name__ == "__main__":

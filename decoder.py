@@ -47,7 +47,7 @@ class BitFlipTopL(BitFlipAlgo):
     
     def decode(self, H, y_err):
         topL_list = [y_err]
-        for i in tqdm(range(self.algo_params["max_iter"])):
+        for i in range(self.algo_params["max_iter"]):
             syndromes = [H @ y for y in topL_list]
             flipped = [self.bit_flip(H, topL_list[i], syndromes[i])[0] for i in range(len(topL_list))]
             # flipped = [code for code in flipped if np.abs(np.array(code - y_err)).sum() < (self.algo_params["min_dist"]/2)]
@@ -71,11 +71,11 @@ class BitFlipTopL(BitFlipAlgo):
 
     def code_metric(self, H, y_curr, y_orig):
         syndrome = H @ y_curr
-        unsatisfied_parity_idx = np.arange(H.shape[0])[syndrome != 0]
-        num_unsatisfied = np.array(H)[unsatisfied_parity_idx].sum()
+        import ipdb;ipdb.set_trace()
+        num_unsatisfied_constr = (np.array(syndrome) != 0).sum()
         dist_from_orig = np.abs(np.array(y_curr - y_orig)).sum()
-        wt = 0.1
-        return num_unsatisfied + wt*dist_from_orig
+        wt = 2
+        return num_unsatisfied_constr + wt*dist_from_orig
 
         
     

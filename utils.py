@@ -17,3 +17,10 @@ def add_error(corr_y, num_errs):
     err_idx = np.random.choice(corr_y.shape[0], num_errs)
     e[err_idx] = 1
     return (corr_y + e) 
+
+def h_inv(h): 
+    return (np.log2(1 + np.sqrt(1-np.power(h, 4/3))) + (h-1))/(2*np.arctanh(np.sqrt(1-np.power(h,4/3))))
+
+def h_inv_alt(h): 
+    return h/(2*np.log2(6/h))
+
