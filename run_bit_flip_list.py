@@ -101,7 +101,7 @@ def benchmark_algo(p, algorithm, codes_per_case=1, trials_per_code=1):
 
 
 def main():
-    p = Pool(10)
+    p = Pool(1)
     stats_dict = {}
 
     for metric_name in METRIC_CHOICES:
@@ -110,14 +110,14 @@ def main():
         metric = Metric(metric_name)
         num_trials_per_code = 2
         num_codes = 10
-        L = 10
+        L = 6
         algo_name = metric_name + "_" + selector_name + "_" + str(L)
         selector = BitSelector(selector_name)
         algo_params = {"max_iter": int(1e3), "metric": metric, "selector": selector, "L" : L, "coeff":1}
         algo_topL = BitFlipTopL(algo_name=algo_name, algo_params=algo_params)
         stats_dict[algo_name] = benchmark_algo(p, algo_topL, num_codes, num_trials_per_code)
 
-    with open(f"results_top_10.pickle", "wb") as f:
+    with open("results_top_{}_wt_02.pickle".format(L), "wb") as f:
         pickle.dump(stats_dict, f)
 
 
